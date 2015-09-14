@@ -1,0 +1,16 @@
+---
+1:
+- 4
+- :scope_system
+2:
+- 4
+- :scope_interface
+3:
+- 4
+- :scope_linecard
+4:
+- 4
+- :scope_netflow_cache
+5:
+- 4
+- :scope_template

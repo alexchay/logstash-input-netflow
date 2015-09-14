@@ -1,0 +1,25 @@
+---
+1:
+- 8
+- :in_bytes
+2:
+- 8
+- :in_pkts
+98:
+- 1
+- :in_dscp
+147:
+- :string
+- :wlan_ssid
+195:
+- 1
+- :out_dscp
+365:
+- :mac_addr
+- :client_mac_addr
+366:
+- :ip4_addr
+- :client_ipv4_addr
+367:
+- :mac_addr
+- :ap_mac_addr

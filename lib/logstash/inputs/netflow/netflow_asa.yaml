@@ -1,0 +1,79 @@
+---
+85:
+- 4
+- :flow_bytes
+148:
+- 4
+- :conn_id
+152:
+- 8
+- :flow_create_time_msec
+176:
+- 1
+- :icmp_type
+177:
+- 1
+- :icmp_code
+178:
+- 1
+- :icmp_type_ipv6
+179:
+- 1
+- :icmp_code_ipv6
+225:
+- ip4_addr
+- :xlate_src_addr_ipv4
+226:
+- ip4_addr
+- :xlate_dst_addr_ipv4
+227:
+- 2
+- :xlate_src_port
+228:
+- 2
+- :xlate_dst_port
+231:
+- 4
+- :fwd_flow_delta_bytes
+232:
+- 4
+- :ref_flow_delta_bytes
+233:
+- 1
+- :fw_event
+281:
+- ip6_addr
+- :xlate_src_addr_ipv6
+282:
+- ip6_addr
+- :xlate_dst_addr_ipv6
+323:
+- 8
+- :event_time_msec
+33000:
+- 12
+- :ingress_acl_id
+33001:
+- 12
+- :egress_acl_id
+33002:
+- 2
+- :fw_ext_event
+40001:
+- ip4_addr
+- :xlate_src_addr_ipv4
+40002:
+- ip4_addr
+- :xlate_dst_addr_ipv4
+40003:
+- 2
+- :xlate_src_port
+40004:
+- 2
+- :xlate_dst_port
+40005:
+- 1
+- :fw_event
+40000:
+- :string
+- :aaa_username
