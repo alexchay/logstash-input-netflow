@@ -70,7 +70,39 @@ describe LogStash::Inputs::Netflow do
         "@version":"1"
       }
       FNF
-      :asa => "place for a event from asa"
+      :asa => <<-ASA,
+      {
+        "@timestamp":"2015-09-14T20:55:28.000Z",
+        "netflow": {
+          "conn_id":28057253,
+          "input_snmp":16,
+          "output_snmp":15,
+          "icmp_type":3,
+          "icmp_code":3,
+          "xlate_src_addr_ipv4":"10.98.10.50",
+          "xlate_dst_addr_ipv4":"10.98.200.134",
+          "xlate_src_port":0,
+          "xlate_dst_port":0,
+          "fw_event":2,
+          "fw_ext_event":2019,
+          "event_time_msec":1442264127955,
+          "fwd_flow_delta_bytes":548,
+          "ref_flow_delta_bytes":0,
+          "flow_create_time_msec":1442264127945
+          },
+        "host":"10.10.10.10",
+        "version":9,
+        "flow_seq_num":578,
+        "flowset_id":263,
+        "ipv4_src_addr":"10.98.10.50",
+        "l4_src_port":0,
+        "ipv4_dst_addr":"10.98.200.134",
+        "l4_dst_port":0,
+        "protocol":1,
+        "@version":"1"
+      }
+      ASA
+      :smth => "place for a event from smth"
     }
   end
 
@@ -87,7 +119,7 @@ describe LogStash::Inputs::Netflow do
   subject do
     LogStash::Inputs::Netflow.new(
         "port" => 9999,
-        "exporters" => ["fnf" , "wlc"]).tap do |subj|
+        "exporters" => ["fnf" , "wlc", "asa"]).tap do |subj|
           expect {subj.register}.not_to raise_error
     end
   end
@@ -129,4 +161,20 @@ describe LogStash::Inputs::Netflow do
       expect(decode[4].to_json).to eq(json_events[:fnf])
     end
   end
+
+  context "when exporter is asa" do
+
+    let(:data) do
+      [].tap do |data|
+        data << IO.read(File.join(dir_to_files, "asa_templates1.dat"), :mode => "rb")
+        data << IO.read(File.join(dir_to_files, "asa_templates2.dat"), :mode => "rb")
+        data << IO.read(File.join(dir_to_files, "asa_flows.dat"), :mode => "rb")
+      end
+    end
+
+    it "should decode fnf netflow" do
+      expect(decode[4].to_json).to eq(json_events[:asa])
+    end
+  end
+
 end
