@@ -330,10 +330,6 @@ class LogStash::Inputs::Netflow < LogStash::Inputs::Base
               event[@target][ks] = vs
             end
           end
-          # calc in_bytes_dir
-          if event.has_key?("in_bytes") and event.has_key?("direction")
-            event["in_bytes_dir"] = event["direction"]==0 ? event["in_bytes"] : -event["in_bytes"]
-          end
           # calc duration
           if event[@target].has_key?("first_switched") and event[@target].has_key?("last_switched")
             event[@target]["duration"] = DateTime.strptime(event[@target]["last_switched"], '%Y-%m-%dT%H:%M:%S.%L').to_time.to_i - DateTime.strptime(event[@target]['first_switched'], '%Y-%m-%dT%H:%M:%S.%L').to_time.to_i

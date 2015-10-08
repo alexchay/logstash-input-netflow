@@ -29,7 +29,6 @@ describe LogStash::Inputs::Netflow do
         "direction":0,
         "in_bytes":446,
         "in_pkts":2,
-        "in_bytes_dir":446,
         "@version":"1"
       }
       WLC
@@ -66,7 +65,6 @@ describe LogStash::Inputs::Netflow do
         "protocol":17,
         "in_bytes":380,
         "in_pkts":5,
-        "in_bytes_dir":-380,
         "@version":"1"
       }
       FNF

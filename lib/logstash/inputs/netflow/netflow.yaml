@@ -1,4 +1,5 @@
 ---
+# http://www.iana.org/assignments/ipfix/ipfix.xhtml
 1:
 - 4
 - :in_bytes
@@ -231,12 +232,18 @@
 186:
 - 2
 - :tcp_winsize
+190:
+- 2
+- :ipv4_total_length
 195:
 - 1
 - :ip_dscp
 206:
 - 1
 - :is_multicast
+224:
+- 2
+- :ip_total_length
 288:
 - :string
 - :is_p2p
