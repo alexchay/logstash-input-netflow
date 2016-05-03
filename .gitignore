@@ -1,3 +1,4 @@
+buildgem.sh
 deploy.sh
 *.gem
 *.rbc
@@ -23,7 +24,9 @@ build/
 .rspec
 
 ## Environment normalisation:
+.bundle
 /.bundle/
+vendor
 /vendor/bundle
 /lib/bundler/man/
 

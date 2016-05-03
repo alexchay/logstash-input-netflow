@@ -1,9 +1,15 @@
 # encoding: utf-8
 
 require "logstash/devutils/rspec/spec_helper"
+require_relative "../support/client"
 require "logstash/inputs/netflow"
 require "logstash/event"
 
+# expose the udp socket so that we can assert, during
+# a spec, that it is open and we can start sending data
+ class LogStash::Inputs::Netflow
+    attr_reader :udp
+ end
 
 describe LogStash::Inputs::Netflow do
 
@@ -72,29 +78,30 @@ describe LogStash::Inputs::Netflow do
       {
         "@timestamp":"2015-09-14T20:55:28.000Z",
         "netflow": {
-          "conn_id":28057253,
+          "conn_id":28057252,
           "input_snmp":16,
           "output_snmp":15,
-          "icmp_type":3,
-          "icmp_code":3,
+          "icmp_type":8,
+          "icmp_code":0,
           "xlate_src_addr_ipv4":"10.98.10.50",
-          "xlate_dst_addr_ipv4":"10.98.200.134",
-          "xlate_src_port":0,
+          "xlate_dst_addr_ipv4":"10.98.206.10",
+          "xlate_src_port":16177,
           "xlate_dst_port":0,
-          "fw_event":2,
-          "fw_ext_event":2019,
-          "event_time_msec":1442264127955,
-          "fwd_flow_delta_bytes":548,
-          "ref_flow_delta_bytes":0,
-          "flow_create_time_msec":1442264127945
+          "fw_event":1,
+          "fw_ext_event":0,
+          "event_time_msec":1442264127945,
+          "flow_create_time_msec":1442264127945,
+          "ingress_acl_id":0,
+          "egress_acl_id":4822082937111445504,
+          "aaa_username":""
           },
-        "host":"10.10.10.10",
+        "host":"127.0.0.1",
         "version":9,
         "flow_seq_num":578,
-        "flowset_id":263,
+        "flowset_id":256,
         "ipv4_src_addr":"10.98.10.50",
-        "l4_src_port":0,
-        "ipv4_dst_addr":"10.98.200.134",
+        "l4_src_port":16177,
+        "ipv4_dst_addr":"10.98.206.10",
         "l4_dst_port":0,
         "protocol":1,
         "@version":"1"
@@ -110,22 +117,29 @@ describe LogStash::Inputs::Netflow do
       File.dirname(__FILE__)
   end
 
-  let(:client) do
+  let(:clientip) do
     ["", "", "", "10.10.10.10"]
   end
 
-  subject do
+  let(:port) { 9999 }
+
+  subject(:netflow) do
     LogStash::Inputs::Netflow.new(
-        "port" => 9999,
-        "exporters" => ["fnf" , "wlc", "asa"]).tap do |subj|
-          expect {subj.register}.not_to raise_error
+        "port" => port,
+        "host" => "127.0.0.1",
+        "exporters" => ["fnf" , "wlc", "asa"]).tap do |this|
+          expect {this.register}.not_to raise_error
     end
+  end
+
+  after :each do
+    netflow.close rescue nil
   end
 
   let(:decode) do
     [].tap do |events|
       data.each do |payload|
-        subject.decode(payload,client){|event| events << event}
+        netflow.decode(payload,clientip){|event| events << event}
       end
     end
   end
@@ -140,7 +154,7 @@ describe LogStash::Inputs::Netflow do
       end
     end
 
-    it "should decode wlc netflow" do
+    it "decodes wlc netflow" do
       expect(decode[4].to_json).to eq(json_events[:wlc])
     end
   end
@@ -155,10 +169,12 @@ describe LogStash::Inputs::Netflow do
       end
     end
 
-    it "should decode fnf netflow" do
+    it "decodes fnf netflow" do
       expect(decode[4].to_json).to eq(json_events[:fnf])
     end
   end
+
+  subject(:client) { LogStash::Inputs::Test::UDPClient.new(port) }
 
   context "when exporter is asa" do
 
@@ -169,10 +185,31 @@ describe LogStash::Inputs::Netflow do
         data << IO.read(File.join(dir_to_files, "asa_flows.dat"), :mode => "rb")
       end
     end
-
-    it "should decode fnf netflow" do
-      expect(decode[4].to_json).to eq(json_events[:asa])
+    let(:send) do
+      queue = Queue.new
+      input_thread = Thread.new do
+        netflow.run(queue)
+      end
+      puts "netflow start running"
+      # because the udp socket is created and bound during #run
+      # we must ensure that it is open before sending data
+      sleep 2 until (netflow.udp && !netflow.udp.closed?)
+      data.each do |payload|
+          client.send(payload)
+      end
+      begin
+        size = queue.size
+        sleep 2
+      end until size = queue.size
+      queue.pop
+    end
+    it "decodes asa netflow" do
+      expect(send.to_json).to eq(json_events[:asa])
     end
   end
+
+  # it_behaves_like "an interruptible input plugin" do
+  #   let(:config) { { "port" => port } }
+  # end
 
 end

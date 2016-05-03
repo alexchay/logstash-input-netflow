@@ -3,6 +3,8 @@ require "logstash/inputs/base"
 require "logstash/namespace"
 require "logstash/timestamp"
 require "date"
+require "socket"
+require "stud/interval"
 require "thread"
 require "yaml"
 
@@ -22,7 +24,7 @@ class LogStash::Inputs::Netflow < LogStash::Inputs::Base
   config :port, :validate => :number, :required => true
 
   # The maximum packet size to read from the network
-  config :buffer_size, :validate => :number, :default => 8192
+  config :buffer_size, :validate => :number, :default => 65536
 
   # Number of threads processing packets
   config :workers, :validate => :number, :default => 2
@@ -64,6 +66,7 @@ class LogStash::Inputs::Netflow < LogStash::Inputs::Base
   public
   def register
     require "logstash/inputs/netflow/util"
+    @udp = nil
 
     @fields = {}
     # Load to default Flexible Netflow v9 field definitions
@@ -104,18 +107,15 @@ class LogStash::Inputs::Netflow < LogStash::Inputs::Base
 
 
   public
-  def run(queue)
-  @output_queue = queue
-  @udp = nil
+  def run(output_queue)
+    @output_queue = output_queue
     begin
       # start UDP listener
       udp_listener()
-    rescue LogStash::ShutdownSignal
-      # do nothing, shutdown was requested.
     rescue => e
       @logger.warn("UDP listener died", :exception => e, :backtrace => e.backtrace)
-      sleep(5)
-      retry
+      Stud.stoppable_sleep(5) { stop? }
+      retry unless stop?
     end # begin
   end # def run
 
@@ -137,12 +137,14 @@ class LogStash::Inputs::Netflow < LogStash::Inputs::Base
       Thread.new { inputworker(i) }
     end
 
-    loop do
+    while !stop?
+      next if IO.select([@udp], [], [], 0.5).nil?
       #collect datagram message and add to queue
-      payload, client = @udp.recvfrom(@buffer_size)
-      @input_to_worker.push([payload,client])
+      payload, client = @udp.recvfrom_nonblock(@buffer_size)
+      next if payload.empty?
+      @input_to_worker.push([payload, client])
       if (@input_to_worker.size > @queue_size -1)
-          @logger.warn("UDP listener queue is full. Next packets will be dropped.")
+        @logger.warn("UDP listener queue is full. Next packets will be dropped.")
       end
     end
   ensure
@@ -158,7 +160,6 @@ class LogStash::Inputs::Netflow < LogStash::Inputs::Base
     begin
       while true
         payload,client = @input_to_worker.pop
-
         decode(payload, client) do |event|
           decorate(event)
           @output_queue.push(event)
@@ -170,10 +171,14 @@ class LogStash::Inputs::Netflow < LogStash::Inputs::Base
   end # def inputworker
 
   public
-  def teardown
-    @udp.close if @udp && !@udp.closed?
+  def close
+    @udp.close rescue nil
   end
 
+  public
+  def stop
+    @udp.close rescue nil
+  end
 
   public
   def decode(payload, client, &block)

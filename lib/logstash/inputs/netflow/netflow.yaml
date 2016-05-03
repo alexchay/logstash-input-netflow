@@ -214,6 +214,12 @@
 83:
 - :string
 - :if_desc
+88:
+- 2
+- :fragm_offset
+89:
+- 4
+- :forward_status
 94:
 - :string
 - :app_desc
@@ -238,6 +244,12 @@
 195:
 - 1
 - :ip_dscp
+196:
+- 1
+- :ip_prec
+197:
+- 1
+- :fragm_flags
 206:
 - 1
 - :is_multicast
@@ -253,6 +265,9 @@
 290:
 - :string
 - :is_encrypted
+37086:
+- 2
+- :tcp_mss
 45000:
 - :string
 - :app_category
