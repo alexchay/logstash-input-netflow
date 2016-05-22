@@ -33,9 +33,6 @@ class LogStash::Inputs::Netflow < LogStash::Inputs::Base
   # before packets will start dropping.
   config :queue_size, :validate => :number, :default => 2000
 
-  # Specify into what field you want the Netflow data.
-  config :target, :validate => :string, :default => "netflow"
-
   # Specify kind of exporters you will use.
   config :exporters, :validate => :array, :default => ["fnf"]
 
@@ -166,7 +163,7 @@ class LogStash::Inputs::Netflow < LogStash::Inputs::Base
         end
       end
     rescue => e
-      @logger.error("Exception in inputworker", "exception" => e, "backtrace" => e.backtrace)
+      @logger.warn("Exception in inputworker", "exception" => e, "backtrace" => e.backtrace)
     end
   end # def inputworker
 
@@ -284,8 +281,7 @@ class LogStash::Inputs::Netflow < LogStash::Inputs::Base
         #
         else
           event = {
-            LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(flowset.unix_sec),
-            @target => {}
+            LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(flowset.unix_sec)
           }
 
           event["host"] = host
@@ -301,21 +297,13 @@ class LogStash::Inputs::Netflow < LogStash::Inputs::Base
             ks = k.to_s
             vs = v.snapshot
             case ks
-            when /^ipv4_(src|dst)_addr$/
-              event[ks] = vs
-            when /^l4_(src|dst)_port$/
-              event[ks] = vs
-            when /^(in_bytes|in_pkts)$/
-              event[ks] = vs
-            when /^(protocol|direction)$/
-              event[ks] = vs
             when /_switched$/
               millis = flowset.uptime - v
               seconds = flowset.unix_sec - (millis / 1000)
               # v9 did away with the nanosecs field
               micros = 1000000 - (millis % 1000)
-              #event[@target][ks] = Time.at(seconds, micros).utc.strftime("%Y-%m-%dT%H:%M:%S.%3NZ")
-              event[@target][ks] = LogStash::Timestamp.at(seconds, micros).to_iso8601
+              #event[ks] = Time.at(seconds, micros).utc.strftime("%Y-%m-%dT%H:%M:%S.%3NZ")
+              event[ks] = LogStash::Timestamp.at(seconds, micros).to_iso8601
             when /^app_id$/
               # add details from applications table
               app_rec = nil
@@ -324,20 +312,20 @@ class LogStash::Inputs::Netflow < LogStash::Inputs::Base
                 app_name = app_rec[:app_name]
                 [:app_category,:app_category_sub,:app_group,:is_p2p,:is_tunnel,:is_encrypted].each do |f|
                   if app_rec.has_key?(f)
-                    event[@target][f.to_s] = app_rec[f]
+                    event[f.to_s] = app_rec[f]
                   end
                 end #each
               end
               app_id = vs.divmod(16777216)
-              event[@target]["app_id"] = app_id[0].to_s.rjust(2,'0') +':'+ app_id[1].to_s
-              event[@target]["app_name"] = app_name ||= "undefined"
+              event["app_id"] = app_id[0].to_s.rjust(2,'0') +':'+ app_id[1].to_s
+              event["app_name"] = app_name ||= "undefined"
             else
-              event[@target][ks] = vs
+              event[ks] = vs
             end
           end
           # calc duration
-          if event[@target].has_key?("first_switched") and event[@target].has_key?("last_switched")
-            event[@target]["duration"] = DateTime.strptime(event[@target]["last_switched"], '%Y-%m-%dT%H:%M:%S.%L').to_time.to_i - DateTime.strptime(event[@target]['first_switched'], '%Y-%m-%dT%H:%M:%S.%L').to_time.to_i
+          if event.has_key?("first_switched") and event.has_key?("last_switched")
+            event["duration"] = DateTime.strptime(event["last_switched"], '%Y-%m-%dT%H:%M:%S.%L').to_time.to_i - DateTime.strptime(event["first_switched"], '%Y-%m-%dT%H:%M:%S.%L').to_time.to_i
           end
           events << LogStash::Event.new(event)
         end
